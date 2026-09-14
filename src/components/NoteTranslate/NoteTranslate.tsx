@@ -7,9 +7,11 @@ import {
   NoteTranslateError,
   TranslateFailure,
   canOfferNoteTranslate,
+  detectNoteLanguage,
   peekNoteTranslation,
   translateNoteText,
 } from '../../lib/noteTranslate';
+import { languageBase } from '../../lib/noteTranslateProtect';
 import {
   NoteTranslatePrefs,
   onDeviceTranslatorAvailable,
@@ -49,13 +51,14 @@ const NoteTranslate: Component<{
   const [translated, setTranslated] = createSignal<string | undefined>();
   const [sourceLanguage, setSourceLanguage] = createSignal<string | undefined>();
   const [showingTranslation, setShowingTranslation] = createSignal(false);
+  const [sameLanguage, setSameLanguage] = createSignal(false);
 
   let abort: AbortController | undefined;
 
   const noteId = () => props.note.id || props.note.post.id;
   const sourceText = () => props.note.content || props.note.post.content || '';
   const targetLanguage = () => resolveTargetLanguage(prefs());
-  const offer = () => canOfferNoteTranslate(sourceText(), prefs());
+  const offer = () => canOfferNoteTranslate(sourceText(), prefs()) && !sameLanguage();
 
   const activeNote = () => {
     const text = translated();
@@ -148,8 +151,19 @@ const NoteTranslate: Component<{
     event.stopPropagation();
   };
 
+  const refreshSameLanguage = () => {
+    const text = sourceText();
+    const target = targetLanguage();
+    void detectNoteLanguage(text).then((detected) => {
+      if (!detected) return;
+      setSourceLanguage(detected);
+      setSameLanguage(detected === languageBase(target));
+    });
+  };
+
   onMount(() => {
     refreshPrefs();
+    refreshSameLanguage();
     const cached = peekNoteTranslation(sourceText(), prefs());
     if (cached) {
       setTranslated(cached.text);
@@ -184,6 +198,8 @@ const NoteTranslate: Component<{
     setShowingTranslation(false);
     setError(undefined);
     setBusy(false);
+    setSameLanguage(false);
+    refreshSameLanguage();
   }));
 
   return (

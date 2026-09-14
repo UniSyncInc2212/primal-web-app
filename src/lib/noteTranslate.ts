@@ -132,6 +132,36 @@ const getTranslatorCtor = (): any => {
   return g.Translator;
 };
 
+let sharedDetector: Promise<Detector | undefined> | undefined;
+
+const getSharedDetector = (): Promise<Detector | undefined> => {
+  if (!sharedDetector) {
+    const Detector = getLanguageDetectorCtor();
+    sharedDetector = Detector?.create
+      ? Detector.create().catch(() => undefined)
+      : Promise.resolve(undefined);
+  }
+  return sharedDetector;
+};
+
+export const detectNoteLanguage = async (source: string): Promise<string | undefined> => {
+  if (!onDeviceTranslatorAvailable()) return undefined;
+  const { payload } = shieldNoteText(source);
+  const prose = payload.replace(/⟦NTX\d{3}⟧/g, ' ').trim();
+  if (!prose) return undefined;
+  try {
+    const detector = await getSharedDetector();
+    if (!detector) return undefined;
+    const results = await detector.detect(prose);
+    const best = [...(results || [])].sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+    const lang = best?.detectedLanguage;
+    if (!lang || lang === 'und' || (best?.confidence || 0) < 0.4) return undefined;
+    return languageBase(lang);
+  } catch {
+    return undefined;
+  }
+};
+
 const detectOnDevice = async (
   text: string,
   signal?: AbortSignal,
