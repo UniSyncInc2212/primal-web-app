@@ -2,7 +2,6 @@ import {
   hasTranslatableProse,
   languageBase,
   normalizeOwnedLibreTranslateUrl,
-  shieldNoteText,
   shouldOfferTranslate,
 } from './noteTranslateProtect';
 import {
