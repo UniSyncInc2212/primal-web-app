@@ -2,10 +2,14 @@ import {
   hasTranslatableProse,
   languageBase,
   normalizeOwnedLibreTranslateUrl,
-  restoreNoteText,
   shieldNoteText,
   shouldOfferTranslate,
 } from './noteTranslateProtect';
+import {
+  restoreNoteTextForTranslation,
+  shieldNoteTextForTranslation,
+  stripTranslationPlaceholders,
+} from './noteTranslateSlots';
 import {
   NoteTranslatePrefs,
   NoteTranslateProvider,
@@ -146,8 +150,8 @@ const getSharedDetector = (): Promise<Detector | undefined> => {
 
 export const detectNoteLanguage = async (source: string): Promise<string | undefined> => {
   if (!onDeviceTranslatorAvailable()) return undefined;
-  const { payload } = shieldNoteText(source);
-  const prose = payload.replace(/⟦NTX\d{3}⟧/g, ' ').trim();
+  const shielded = shieldNoteTextForTranslation(source);
+  const prose = stripTranslationPlaceholders(shielded.payload, shielded.namespace).trim();
   if (!prose) return undefined;
   try {
     const detector = await getSharedDetector();
@@ -366,7 +370,7 @@ export const translateNoteText = async (
   const hit = cache.get(key);
   if (hit) return hit;
 
-  const shielded = shieldNoteText(source);
+  const shielded = shieldNoteTextForTranslation(source);
   throwIfAborted(options?.signal);
 
   let result: { text: string; sourceLanguage?: string };
@@ -397,7 +401,11 @@ export const translateNoteText = async (
 
   throwIfAborted(options?.signal);
 
-  const restored = restoreNoteText(result.text, shielded.slots);
+  const restored = restoreNoteTextForTranslation(
+    result.text,
+    shielded.slots,
+    shielded.namespace,
+  );
   const translation: NoteTranslation = {
     text: restored,
     sourceLanguage: result.sourceLanguage || undefined,
