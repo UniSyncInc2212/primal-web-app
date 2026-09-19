@@ -10,6 +10,10 @@ import {
   shieldNoteText,
   shouldOfferTranslate,
 } from '../src/lib/noteTranslateProtect.ts';
+import {
+  restoreNoteTextForTranslation,
+  shieldNoteTextForTranslation,
+} from '../src/lib/noteTranslateSlots.ts';
 
 type Case = { name: string; ok: boolean; detail?: string };
 
@@ -61,6 +65,32 @@ const mangled = shielded.payload
   .replaceAll('⟧', ' ]')
   .replace(/NTX/g, 'ntx');
 check('restores lightly mangled placeholders', restoreNoteText(mangled, shielded.slots) === sample);
+
+const collisionSource = 'Please compare https://example.com/NTX001 with https://example.org/b';
+const collision = shieldNoteTextForTranslation(collisionSource);
+check(
+  'translation namespace is absent from source',
+  !collisionSource.toUpperCase().includes(collision.namespace),
+);
+check(
+  'URL containing NTX001 round-trips unchanged',
+  restoreNoteTextForTranslation(
+    collision.payload,
+    collision.slots,
+    collision.namespace,
+  ) === collisionSource,
+);
+
+const literalSource = 'This prose literally says NTX000 and links https://example.com/a';
+const literal = shieldNoteTextForTranslation(literalSource);
+check(
+  'literal NTX000 prose is not treated as generated placeholder',
+  restoreNoteTextForTranslation(
+    literal.payload,
+    literal.slots,
+    literal.namespace,
+  ) === literalSource,
+);
 
 check('token-only notes are not offered', !hasTranslatableProse(fixtures.join(' ')));
 check('short notes are not offered', !hasTranslatableProse('ok'));
