@@ -11,6 +11,11 @@ import {
   stripTranslationPlaceholders,
 } from './noteTranslateSlots';
 import {
+  restoreNoteTextForTranslation,
+  shieldNoteTextForTranslation,
+  stripTranslationPlaceholders,
+} from './noteTranslateSlots';
+import {
   NoteTranslatePrefs,
   NoteTranslateProvider,
   onDeviceTranslatorAvailable,
