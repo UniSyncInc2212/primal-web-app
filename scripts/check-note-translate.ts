@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  restoreNoteTextForTranslation,
+  shieldNoteTextForTranslation,
+} from '../src/lib/noteTranslateSlots.ts';
+import {
   guessScriptLanguage,
   hasTranslatableProse,
   languageBase,
@@ -65,6 +69,32 @@ const mangled = shielded.payload
   .replaceAll('⟧', ' ]')
   .replace(/NTX/g, 'ntx');
 check('restores lightly mangled placeholders', restoreNoteText(mangled, shielded.slots) === sample);
+
+const collisionSource = 'Please compare https://example.com/NTX001 with https://example.org/b';
+const collisionShield = shieldNoteTextForTranslation(collisionSource);
+check(
+  'translation namespace is absent from source',
+  !collisionSource.toUpperCase().includes(collisionShield.namespace),
+);
+check(
+  'URL containing NTX001 round-trips unchanged',
+  restoreNoteTextForTranslation(
+    collisionShield.payload,
+    collisionShield.slots,
+    collisionShield.namespace,
+  ) === collisionSource,
+);
+
+const literalMarkerSource = 'This prose literally says NTX000 and links https://example.com/a';
+const literalMarkerShield = shieldNoteTextForTranslation(literalMarkerSource);
+check(
+  'literal NTX000 prose is not treated as a generated placeholder',
+  restoreNoteTextForTranslation(
+    literalMarkerShield.payload,
+    literalMarkerShield.slots,
+    literalMarkerShield.namespace,
+  ) === literalMarkerSource,
+);
 
 const collisionSource = 'Please compare https://example.com/NTX001 with https://example.org/b';
 const collision = shieldNoteTextForTranslation(collisionSource);
