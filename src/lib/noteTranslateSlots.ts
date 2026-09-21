@@ -1,4 +1,4 @@
-import { shieldNoteText } from './noteTranslateProtect';
+import { shieldNoteText } from './noteTranslateProtect.ts';
 
 export type TranslationShield = {
   payload: string;
