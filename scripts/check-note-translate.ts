@@ -92,6 +92,19 @@ check(
   ) === literalMarkerSource,
 );
 
+for (const marker of ['⟦NTX000⟧', 'P R I M A L N T X 0 : 000']) {
+  const source = `Please compare ${marker} with https://example.org/b`;
+  const shield = shieldNoteTextForTranslation(source);
+  check(
+    `literal marker round-trips unchanged: ${marker}`,
+    restoreNoteTextForTranslation(
+      shield.payload,
+      shield.slots,
+      shield.namespace,
+    ) === source,
+  );
+}
+
 check('token-only notes are not offered', !hasTranslatableProse(fixtures.join(' ')));
 check('short notes are not offered', !hasTranslatableProse('ok'));
 check('prose notes are offered', hasTranslatableProse('This note has enough letters to translate.'));
