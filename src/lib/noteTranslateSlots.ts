@@ -6,20 +6,20 @@ export type TranslationShield = {
   namespace: string;
 };
 
-const legacySlot = /⟦NTX(\d{3})⟧/g;
-
 const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^$(){}|[\]\\]/g, '\\$&');
 
-const chooseNamespace = (source: string): string => {
-  const upper = (source || '').toUpperCase();
-  let index = 0;
-  while (upper.includes('PRIMALNTX' + index)) index += 1;
-  return 'PRIMALNTX' + index;
-};
-
 const namespacePattern = (namespace: string): string =>
   namespace.split('').map(escapeRegExp).join('\\s*');
+
+const sourceContainsNamespace = (source: string, namespace: string): boolean =>
+  new RegExp(namespacePattern(namespace), 'i').test(source || '');
+
+const chooseNamespace = (source: string): string => {
+  let index = 0;
+  while (sourceContainsNamespace(source, 'PRIMALNTX' + index)) index += 1;
+  return 'PRIMALNTX' + index;
+};
 
 const slotPattern = (namespace: string): RegExp => {
   const ns = namespacePattern(namespace);
@@ -32,13 +32,9 @@ const slotPattern = (namespace: string): RegExp => {
 };
 
 export const shieldNoteTextForTranslation = (source: string): TranslationShield => {
-  const base = shieldNoteText(source);
   const namespace = chooseNamespace(source);
-  const payload = base.payload.replace(
-    legacySlot,
-    (_full, index: string) => '⟦' + namespace + ':' + index + '⟧',
-  );
-  return { payload, slots: base.slots, namespace };
+  const base = shieldNoteText(source, namespace);
+  return { payload: base.payload, slots: base.slots, namespace };
 };
 
 export const restoreNoteTextForTranslation = (
@@ -48,7 +44,6 @@ export const restoreNoteTextForTranslation = (
 ): string => {
   if (!translated) return '';
 
-  // Intentionally one pass: restored originals are never rescanned.
   return translated.replace(slotPattern(namespace), (full, a, b, c) => {
     const raw = a ?? b ?? c;
     const index = Number.parseInt(raw, 10);
