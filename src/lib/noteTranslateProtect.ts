@@ -8,12 +8,14 @@ export type ShieldedNote = {
   slots: string[];
 };
 
-const SLOT = (i: number) => `⟦NTX${String(i).padStart(3, '0')}⟧`;
+const SLOT = (i: number, namespace = 'NTX') =>
+  namespace === 'NTX'
+    ? `⟦NTX${String(i).padStart(3, '0')}⟧`
+    : `⟦${namespace}:${String(i).padStart(3, '0')}⟧`;
 const SLOT_FIND = /⟦\s*NTX\s*(\d{1,3})\s*⟧|\[\s*NTX\s*(\d{1,3})\s*\]|\bNTX\s*(\d{1,3})\b/gi;
 const SLOT_STRIP = /⟦NTX\d{3}⟧/g;
 
 const PATTERNS: RegExp[] = [
-  // Fenced/inline code and scheme-prefixed tokens first so inners are not split.
   /```[\s\S]*?```/g,
   /`[^`]+`/g,
   /https?:\/\/[^\s<>()]+/gi,
@@ -37,18 +39,19 @@ const PATTERNS: RegExp[] = [
 const LETTER = /\p{L}/u;
 const MIN_LETTERS = 8;
 
-export const shieldNoteText = (source: string): ShieldedNote => {
+export const shieldNoteText = (source: string, namespace = 'NTX'): ShieldedNote => {
   let payload = source || '';
   const slots: string[] = [];
+  const safeNamespace = /^[A-Z0-9]+$/.test(namespace) ? namespace : 'NTX';
 
   for (const pattern of PATTERNS) {
     const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
     const re = new RegExp(pattern.source, flags);
     payload = payload.replace(re, (match) => {
-      if (match.includes('⟦NTX')) return match;
+      if (safeNamespace === 'NTX' && match.includes('⟦NTX')) return match;
       const id = slots.length;
       slots.push(match);
-      return SLOT(id);
+      return SLOT(id, safeNamespace);
     });
   }
 
@@ -135,9 +138,7 @@ export const isHttpUrl = (value: string): boolean => {
 
 export const normalizeOwnedLibreTranslateUrl = (raw: string): string | { error: string } => {
   const trimmed = (raw || '').trim();
-  if (!trimmed) {
-    return { error: 'missing_url' };
-  }
+  if (!trimmed) return { error: 'missing_url' };
 
   let parsed: URL;
   try {
